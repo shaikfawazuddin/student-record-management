@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Record Management System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PDF Export Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #eef2ff;
+    margin: 0;
+}
+header {
+    background: #1a237e;
+    color: white;
+    padding: 15px;
+    text-align: center;
+}
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 15px;
+}
+.box {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+}
+input, select, button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+}
+button {
+    background: #1a237e;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+button:hover {
+    background: #303f9f;
+}
+.record {
+    background: #e8eaf6;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 5px;
+}
+.counter {
+    font-weight: bold;
+    color: #1a237e;
+}
+#statusMsg {
+    display: none;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #1a237e;
+    background: #e8eaf6;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h2>Lords Institute of Engineering & Technology</h2>
+    <p>Student Record Management System</p>
+</header>
+
+<div class="container">
+
+<!-- Counter & PDF -->
+<div class="box">
+    <p class="counter">Total Students: <span id="count">0</span></p>
+    <button onclick="exportPDF()">Export Records as PDF</button>
+</div>
+
+<!-- Add / Update -->
+<div class="box">
+    <h3>Add / Update Student</h3>
+
+    <div id="statusMsg"></div>
+
+    <input id="roll" placeholder="Roll Number">
+    <input id="name" placeholder="Student Name">
+    <input id="cgpa" placeholder="CGPA">
+    <button onclick="saveStudent()">Save</button>
+</div>
+
+<!-- Search -->
+<div class="box">
+    <h3>Search by Roll Number</h3>
+    <input id="searchRoll" placeholder="Enter Roll Number">
+    <button onclick="searchStudent()">Search</button>
+    <div id="searchResult"></div>
+</div>
+
+<!-- Sort -->
+<div class="box">
+    <h3>Sort Students</h3>
+    <select onchange="sortStudents(this.value)">
+        <option value="">-- Select --</option>
+        <option value="roll">Roll Number</option>
+        <option value="name">Name</option>
+        <option value="cgpa">CGPA</option>
+    </select>
+</div>
+
+<!-- All Records -->
+<div class="box">
+    <h3>All Student Records</h3>
+    <div id="records"></div>
+</div>
+
+</div>
+
+<script>
+const COLLEGE = "Lords Institute of Engineering & Technology";
+const MY_ROLL = "160925733260";
+
+/* Utility Functions */
+function getStudents() {
+    return JSON.parse(localStorage.getItem("students")) || [];
+}
+
+function setStudents(students) {
+    localStorage.setItem("students", JSON.stringify(students));
+}
+
+function departmentByRoll(roll) {
+    let r = Number(roll);
+    return (r >= 160925733257 && r <= 160925733420) ? "CSE-E" : "N/A";
+}
+
+/* Ensure Your Record Always Exists */
+function ensureMyRecord() {
+    let students = getStudents();
+    let exists = students.some(s => s.roll === MY_ROLL);
+
+    if (!exists) {
+        students.push({
+            roll: MY_ROLL,
+            name: "Shaik Fawaz Uddin",
+            cgpa: "10",
+            college: COLLEGE,
+            department: "CSE-E"
+        });
+        setStudents(students);
+    }
+}
+
+/* Add or Update Student */
+function saveStudent() {
+    let rollEl = document.getElementById("roll");
+    let nameEl = document.getElementById("name");
+    let cgpaEl = document.getElementById("cgpa");
+    let msg = document.getElementById("statusMsg");
+
+    let roll = rollEl.value.trim();
+    let name = nameEl.value.trim();
+    let cgpa = cgpaEl.value.trim();
+
+    if (!roll || !name || !cgpa) {
+        alert("Please fill all fields");
+        return;
+    }
+
+    let students = getStudents();
+    let index = students.findIndex(s => s.roll === roll);
+
+    let student = {
+        roll: roll,
+        name: name,
+        cgpa: cgpa,
+        college: COLLEGE,
+        department: departmentByRoll(roll)
+    };
+
+    if (index !== -1) {
+        students[index] = student;
+        msg.innerText = "Student record updated successfully";
+    } else {
+        students.push(student);
+        msg.innerText = "Student added successfully";
+    }
+
+    setStudents(students);
+
+    rollEl.value = "";
+    nameEl.value = "";
+    cgpaEl.value = "";
+
+    msg.style.display = "block";
+    setTimeout(() => msg.style.display = "none", 2000);
+
+    displayStudents();
+}
+
+/* Delete */
+function deleteStudent(roll) {
+    let students = getStudents().filter(s => s.roll !== roll);
+    setStudents(students);
+    ensureMyRecord();
+    displayStudents();
+}
+
+/* Search */
+function searchStudent() {
+    let roll = document.getElementById("searchRoll").value.trim();
+    let s = getStudents().find(st => st.roll === roll);
+
+    document.getElementById("searchResult").innerHTML = s ?
+        `<div class="record">
+        Name: ${s.name}<br>
+        Roll: ${s.roll}<br>
+        CGPA: ${s.cgpa}<br>
+        Department: ${s.department}
+        </div>` : "Student not found";
+}
+
+/* Sort */
+function sortStudents(by) {
+    if (!by) return;
+    let students = getStudents();
+    students.sort((a, b) => a[by] > b[by] ? 1 : -1);
+    setStudents(students);
+    displayStudents();
+}
+
+/* Display */
+function displayStudents() {
+    let students = getStudents();
+    let box = document.getElementById("records");
+    box.innerHTML = "";
+
+    students.forEach(s => {
+        box.innerHTML += `
+        <div class="record">
+        Name: ${s.name}<br>
+        Roll: ${s.roll}<br>
+        CGPA: ${s.cgpa}<br>
+        Department: ${s.department}<br>
+        <button onclick="deleteStudent('${s.roll}')">Delete</button>
+        </div>`;
+    });
+
+    document.getElementById("count").innerText = students.length;
+}
+
+/* Export PDF */
+function exportPDF() {
+    html2pdf().from(document.querySelector(".container"))
+              .save("Student_Records.pdf");
+}
+
+/* Initial Load */
+ensureMyRecord();
+displayStudents();
+</script>
+
+</body>
+</html>
